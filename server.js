@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 
 export const app = express();
 app.use(cors());
+app.use(express.static(__dirname));  // serves style.css and any other static assets
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'client.html')));
 const server = http.createServer(app);
 
