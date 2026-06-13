@@ -367,7 +367,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+      let socket = null;
 
       let username = '';
       let roomnumber = '';
@@ -397,7 +397,18 @@
         roomnumber = document.getElementById('room-input').value.trim();
         if (!username || !roomnumber) return;
 
-        socket.emit('join', { username, roomnumber });
+        // Connect socket only when user joins (lazy) so a load error can't break the page
+        socket = io({ transports: ['websocket'] });
+
+        socket.on('connect', () => {
+          socket.emit('join', { username, roomnumber });
+        });
+
+        socket.on('message', ({ user, text }) => {
+          if (user !== username) appendMessage({ user, text }, false);
+        });
+
+        socket.on('user-joined', msg => appendSystem(msg));
 
         document.getElementById('header-room-name').textContent = '#' + roomnumber;
         document.getElementById('header-username').textContent  = username;
@@ -409,6 +420,7 @@
       // ── Send ──
       document.getElementById('message-form').addEventListener('submit', e => {
         e.preventDefault();
+        if (!socket) return;
         const input = document.getElementById('message-input');
         const text  = input.value.trim();
         if (!text) return;
@@ -418,12 +430,13 @@
         input.focus();
       });
 
-      // ── Receive ──
-      socket.on('message', ({ user, text }) => {
-        if (user !== username) appendMessage({ user, text }, false);
+      // Enter to send
+      document.getElementById('message-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          document.getElementById('message-form').requestSubmit();
+        }
       });
-
-      socket.on('user-joined', msg => appendSystem(msg));
 
       // ── Helpers ──
       function appendMessage({ user, text }, isSent) {
@@ -474,13 +487,6 @@
         display.scrollTop = display.scrollHeight;
       }
 
-      // Enter to send
-      document.getElementById('message-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          document.getElementById('message-form').requestSubmit();
-        }
-      });
     </script>
   </body>
 </html>
