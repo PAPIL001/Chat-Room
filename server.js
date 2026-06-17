@@ -38,7 +38,8 @@ app.use(cors({ origin: ALLOWED_ORIGINS }));
 // Serve the React build in production
 const distPath = path.join(__dirname, 'client', 'dist');
 app.use(express.static(distPath));
-app.get('/', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+// SPA fallback — any unknown route returns index.html so React Router works
+app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 const server = http.createServer(app);
 

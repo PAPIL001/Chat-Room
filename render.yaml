@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: chatterup
+    runtime: node
+    region: oregon          # change to your preferred region
+    plan: free              # upgrade to starter for persistent disks / more RAM
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000          # Render injects its own PORT; this is a fallback
+        generateValue: false
+      - key: MONGO_URI
+        sync: false           # marks this as a secret — you fill it in the dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false           # set to your Render service URL after first deploy
