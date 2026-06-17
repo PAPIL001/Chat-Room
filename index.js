@@ -1,5 +1,5 @@
-import server from './server.js';
-const PORT = process.env.PORT || 3000;
+import server, { PORT } from './server.js';
+
 server.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}`);
+    console.log(`🚀  ChatterUp listening on port ${PORT}`);
 });

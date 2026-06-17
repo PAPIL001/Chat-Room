@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -10,14 +11,29 @@ import Message from './models/Message.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-// ── MongoDB ──────────────────────────────────────────────────────────────────
-mongoose.connect('mongodb://localhost:27017/chatterup')
-    .then(() => console.log('MongoDB connected → chatterup'))
-    .catch(err => console.error('MongoDB connection error:', err));
+// ── Environment variables (loaded from .env) ─────────────────────────────────
+const PORT         = process.env.PORT || 3000;
+const MONGO_URI    = process.env.MONGO_URI;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : '*';
 
-// ── Express ──────────────────────────────────────────────────────────────────
+if (!MONGO_URI) {
+    console.error('❌  MONGO_URI is not defined. Create a .env file — see .env.example');
+    process.exit(1);
+}
+
+// ── MongoDB ───────────────────────────────────────────────────────────────────
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅  MongoDB connected →', MONGO_URI.replace(/:\/\/.*@/, '://<credentials>@')))
+    .catch(err => {
+        console.error('❌  MongoDB connection error:', err.message);
+        process.exit(1);
+    });
+
+// ── Express ───────────────────────────────────────────────────────────────────
 export const app = express();
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 
 // Serve the React build in production
 const distPath = path.join(__dirname, 'client', 'dist');
@@ -28,10 +44,10 @@ const server = http.createServer(app);
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] }
+    cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
 });
 
-// room  →  Map<socketId, { username, avatarSeed }>
+// room → Map<socketId, { username, avatarSeed }>
 const roomUsers = new Map();
 
 function getRoomList(room) {
@@ -63,14 +79,14 @@ io.on('connection', (socket) => {
                 .lean();
             socket.emit('chat-history', history);
         } catch (err) {
-            console.error('Failed to load history:', err);
+            console.error('Failed to load history:', err.message);
             socket.emit('chat-history', []);
         }
 
-        // Notify others a user joined
+        // Notify others
         socket.to(roomnumber).emit('user-joined', `${username} joined the room`);
 
-        // Broadcast updated online list to everyone in room
+        // Broadcast updated online list
         io.to(roomnumber).emit('online-users', getRoomList(roomnumber));
         io.to(roomnumber).emit('user-count', roomUsers.get(roomnumber).size);
     });
@@ -87,10 +103,8 @@ io.on('connection', (socket) => {
             timestamp
         };
 
-        // Broadcast to room
         io.to(socket.room).emit('message', msgData);
 
-        // Persist to DB
         try {
             await Message.create({
                 room:       socket.room,
@@ -100,7 +114,7 @@ io.on('connection', (socket) => {
                 timestamp
             });
         } catch (err) {
-            console.error('Failed to save message:', err);
+            console.error('Failed to save message:', err.message);
         }
     });
 
@@ -131,4 +145,5 @@ io.on('connection', (socket) => {
     });
 });
 
+export { PORT };
 export default server;
