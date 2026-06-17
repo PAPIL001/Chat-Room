@@ -39,7 +39,7 @@ app.use(cors({ origin: ALLOWED_ORIGINS }));
 const distPath = path.join(__dirname, 'client', 'dist');
 app.use(express.static(distPath));
 // SPA fallback — any unknown route returns index.html so React Router works
-app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+app.get('/{*path}', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 const server = http.createServer(app);
 
